@@ -7,3 +7,5 @@ class ApiResponse{
         this.Sucess=this.Sucess < 404 
     }
 }
+
+export {ApiResponse}
