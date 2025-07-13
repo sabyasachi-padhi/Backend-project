@@ -345,3 +345,76 @@ user.routes.js
 
 // export default registerUser;
 
+/*const loginUser = asyncHandler(async (req, res) => {
+    // req body->data
+    // username or email
+    // find the user
+    // password check
+    //acess and refresh token
+    //send cookie
+    const { email, username, password } = req.body
+    console.log(email);
+    
+    if (!username && !email) {
+        throw new ApiErrors(400, "valid username or email existed")
+    }
+
+    const user = await User.findOne({
+        $or: [{ username }, { email }]
+    })
+
+    if (!user) {
+        throw new ApiErrors(404, "user not found")
+    }
+
+    const existedPassword = await user.isPasswordCorrect(password)
+
+    if (!existedPassword) {
+        throw new ApiErrors(400, "password can not found")
+    }
+
+    const { accessToken, refreshToken } = await generateAccessAndRefreshToken(user._id)
+    const logggedInUser = await user.findById(user._id).select("-password -refreshToken")
+
+    const options={
+        httpOnly:true,
+        secure:true,
+    }
+
+    return res
+    .status(200)
+    .cookie("acessToken",accessToken,options)
+    .cookie("refreshToken",refreshToken,options)
+    .json(
+        new ApiResponse(
+            200,{
+                user:logggedInUser,accessToken,refreshToken
+            },
+            "user logged in Sucessfully"
+        )
+    )
+})*/
+
+
+
+/*const logoutUser = asyncHandler(async (req, res) => {
+    await User.findByIdAndUpdate(
+        req.user._id, {
+        $set: {
+            refreshToken: undefined
+        }
+    },
+        {
+            new: true
+        }
+    )
+    const options = {
+        httpOnly: true,
+        secure: true,
+    }
+    return res
+        .status(200)
+        .clearcookie("accessToken", options)
+        .clearcookie("refreshToken", options)
+        .json(ApiResponse(200, {}, "user has logged out"))
+})*/

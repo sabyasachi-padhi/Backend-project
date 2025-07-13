@@ -17,10 +17,7 @@ class ApiErrors extends Error {
         if (stack) {
             this.stack = stack;
         } else {
-            // Error.captureStackTrace is a static method of the native Error object.
-            // It takes two arguments:
-            // 1. The object on which to record the stack trace (this instance of ApiErrors).
-            // 2. The constructor function at which to stop recording the stack trace (this.constructor).
+            
             Error.captureStackTrace(this, this.constructor);
         }
     }
