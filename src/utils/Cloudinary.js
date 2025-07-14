@@ -35,9 +35,6 @@ const uploadOnCloudinary = async (localFilePath) => {
 
         console.log("Cloudinary Upload Debug: File uploaded to Cloudinary successfully. URL:", response.url); // Clarified log
 
-        // CHANGE these lines: Remove duplicate unlink and use async unlink
-        // fs.unlinkSync(localFilePath) // REMOVE THIS LINE
-        // fs.unlinkSync(localFilePath); // REMOVE THIS LINE (duplicate)
         await fsPromises.unlink(localFilePath); // Use async unlink for better performance
         console.log(`Cloudinary Upload Debug: Local temporary file deleted: ${localFilePath}`); // Added log
 
