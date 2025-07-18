@@ -5,23 +5,23 @@ import { User } from "../models/User.model.js"
 import { ApiResponse } from "../utils/ApiResponse.js";
 import { uploadOnCloudinary } from "../utils/Cloudinary.js"
 import jwt from "jsonwebtoken";
-import { Mongoose } from "mongoose";
+import mongoose from "mongoose";
 
 
 const generateAccessAndRefreshToken = async (userId) => {
     try {
         const user = await User.findById(userId)
-        const refreshToken = user.generateAccessToken()
-        const accessToken = user.generateRefreshToken()
+
+
+        const accessToken = user.generateAccessToken()
+        const refreshToken = user.generateRefreshToken()
 
         user.refreshToken = refreshToken
-        user.save({ validateBeforeSave: false })
+        await user.save({ validateBeforeSave: false }) // Don't forget await here!
 
-        return { accessToken, refreshToken }
-
+        return { accessToken, refreshToken } // Return them correctly
     } catch (error) {
         throw new ApiErrors(500, "something went wrong while generating refresh and access token");
-
     }
 }
 
@@ -157,68 +157,29 @@ const loginUser = asyncHandler(async (req, res) => {
 
 
 const logoutUser = asyncHandler(async (req, res) => {
-    // 1. Get the refreshToken from cookies
-    const refreshTokenFromCookie = req.cookies?.refreshToken;
-
-    if (!refreshTokenFromCookie) {
-        // If no refresh token is present, the user is likely not logged in
-        // or the token was already cleared.
-        return res
-            .status(200) // Still return 200, as the desired state (logged out) is achieved
-            .json(new ApiResponse(200, {}, "User already logged out or no session found."));
-    }
-
-    let decodedToken;
-    try {
-        // 2. Decode the refresh token to get the user ID
-        // Ensure process.env.REFRESH_TOKEN_SECRET is correctly loaded
-        decodedToken = jwt.verify(refreshTokenFromCookie, process.env.REFRESH_TOKEN_SECRET);
-    } catch (error) {
-        // Handle cases where the refresh token is invalid or expired
-        // Still clear cookies to ensure logout completes, even with a bad token
-        const options = { httpOnly: true, secure: true };
-        return res
-            .status(200) // Return 200 even if token is bad, as we want to log out
-            .clearCookie("accessToken", options)
-            .clearCookie("refreshToken", options)
-            .json(new ApiResponse(200, {}, "Invalid or expired session. Cookies cleared."));
-    }
-
-    const userId = decodedToken?._id;
-
-    if (!userId) {
-        // This case should ideally not happen if jwt.verify succeeds and token format is correct
-        throw new ApiErrors(401, "User ID not found in decoded refresh token.");
-    }
-
-    // 3. Update the user in the database to remove the stored refresh token
+    // This requires req.user._id to be populated by verifyJWT middleware
     await User.findByIdAndUpdate(
-        userId, // Use the userId obtained from the decoded refresh token
+        req.user._id,
         {
-            $set: {
-                refreshToken: undefined // Set refreshToken to undefined or null
+            $unset: {
+                refreshToken: 1
             }
         },
         {
-            new: true // Return the updated document (optional for this operation)
+            new: true
         }
     );
 
     const options = {
         httpOnly: true,
         secure: true,
-        // In production, consider `sameSite: 'None'` if frontend and backend are on different domains
     };
 
-    // 4. Clear the cookies from the client's browser
     return res
         .status(200)
         .clearCookie("accessToken", options)
         .clearCookie("refreshToken", options)
-        .json(
-            // Assuming ApiResponse is a class and you need 'new'
-            new ApiResponse(200, {}, "User logged out successfully")
-        );
+        .json(new ApiResponse(200, {}, "User Logged Out"));
 });
 
 const refreshAccessToken = asyncHandler(async (req, res) => {
@@ -457,75 +418,74 @@ const getUserChannelProfile = asyncHandler(async (req, res) => {
     console.log(channel);
 
     if (!channel?.length) {
-        throw new ApiErrors(404,"channel does not exists")
+        throw new ApiErrors(404, "channel does not exists")
     }
 
     return res
-    .status(200)
-    .json(
-        new ApiResponse(200,channel[0],"channel sucessfully fetched")
-    )
+        .status(200)
+        .json(
+            new ApiResponse(200, channel[0], "channel sucessfully fetched")
+        )
 })
 
-const getWatchHistory=asyncHandler(async(req,res)=>{
-    const user=await User.aggregate([
+const getWatchHistory = asyncHandler(async (req, res) => {
+    const user = await User.aggregate([
         {
-            $match:{
-                _id:new Mongoose.Types.ObjectId(req.user._id)
+            $match: {
+                _id: req.user._id 
             }
         },
         {
-            $lookup:{
-                from:"videos",
-                localField:"watchHistory",
-                foreignField:"_id",
-                as:"watchHistory",
-                pipeline:[
+            $lookup: {
+                from: "videos",
+                localField: "watchHistory",
+                foreignField: "_id",
+                as: "watchHistory",
+                pipeline: [
                     {
-                        $lookup:{
-                            from:"users",
-                            localField:"owner",
-                            foreignField:"_id",
-                            as:'owner',
-                            pipeline:[
+                        $lookup: {
+                            from: "users",
+                            localField: "owner",
+                            foreignField: "_id",
+                            as: 'owner',
+                            pipeline: [
                                 {
-                                    $project:{
-                                        fullName:1,
-                                        username:1,
-                                        avatar:1,
+                                    $project: {
+                                        fullName: 1,
+                                        username: 1,
+                                        avatar: 1,
                                     }
                                 }
                             ]
-
                         }
                     },
                     {
-                        $addFields:{
-                            owner:{
-                                $first:"$owner"
+                        $addFields: {
+                            owner: {
+                                $first: "$owner"
                             }
                         }
                     }
                 ]
             }
         }
-    ])
+    ]);
 
-    if (!user) {
-        throw new ApiErrors(404,"watch histroy can not fetched")
+
+    if (!user || user.length === 0) {
+        throw new ApiErrors(404, "Watch history cannot be fetched: User not found.");
     }
 
     return res
-    .status(200)
-    .json(
-        ApiResponse(200,
-            user[0].watchHistory,
-            "watch history seen sucessfully"
-        )
-    )
-})
-
-
+        .status(200)
+        .json(
+            new ApiResponse( 
+                200,
+                user[0].watchHistory, // user[0] is safe now because of the check above
+                "Watch history seen successfully"
+            )
+        );
+});   
 
 export {
     registerUser,

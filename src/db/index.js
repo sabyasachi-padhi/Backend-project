@@ -1,13 +1,11 @@
 
-
-
 import mongoose from "mongoose";
 
 // import { DB_NAME } from "../constants.js";
 
 const connectDB = async () => {
     try {
-        // Corrected line: Pass process.env.MONGODB_URI directly.
+        
         // Your MONGODB_URI already contains the database name (e.g., /sabyasachi).
         const connectionInstance = await mongoose.connect(process.env.MONGODB_URI);
 
